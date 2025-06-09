@@ -17,12 +17,13 @@ if uploaded_file is not None:
     else:
         # Filtros
         with st.sidebar:
-            st.header("Filtros")
+            st.header("🔍 Filtros")
             situacao = st.multiselect("Situação Cadastral", df['Situacao Cadastral'].dropna().unique())
             porte = st.multiselect("Porte da Empresa", df['Porte da Empresa'].dropna().unique())
             simples = st.multiselect("Optante pelo Simples", df['Optante Simples'].dropna().unique())
+            show_table = st.checkbox("📋 Mostrar tabela completa", value=True)
 
-        # Aplicar filtros com segurança
+        # Aplicar filtros
         df_filtered = df.copy()
         if situacao:
             df_filtered = df_filtered[df_filtered['Situacao Cadastral'].isin(situacao)]
@@ -31,17 +32,24 @@ if uploaded_file is not None:
         if simples:
             df_filtered = df_filtered[df_filtered['Optante Simples'].isin(simples)]
 
+        # KPIs
         st.subheader("📈 KPIs")
         col1, col2, col3 = st.columns(3)
         col1.metric("Total de Empresas", len(df_filtered))
         col2.metric("Empresas Ativas", df_filtered[df_filtered['Situacao Cadastral'] == 'ATIVA'].shape[0])
         col3.metric("Optantes do Simples", df_filtered[df_filtered['Optante Simples'] == 'SIM'].shape[0])
 
+        # Gráficos
         st.subheader("📊 Gráficos")
         fig1 = px.histogram(df_filtered, x='Porte da Empresa', title="Distribuição por Porte")
         st.plotly_chart(fig1, use_container_width=True)
 
         fig2 = px.histogram(df_filtered, x='Situacao Cadastral', title="Distribuição por Situação Cadastral")
         st.plotly_chart(fig2, use_container_width=True)
+
+        # Mostrar tabela se checkbox estiver marcado
+        if show_table:
+            st.subheader("📄 Tabela de Empresas")
+            st.dataframe(df_filtered, use_container_width=True)
 else:
     st.warning("🔁 Por favor, envie uma planilha Excel para começar.")

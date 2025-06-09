@@ -1,46 +1,47 @@
-# arquivo: dashboard_iguaba.py
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="Dashboard Iguaba", layout="wide")
 st.title("📊 Dashboard de Empresas - Iguaba Grande")
 
-uploaded_file = st.file_uploader("📥 Importe uma planilha Excel", type=["xlsx"])
+uploaded_file = st.file_uploader("📂 Importar planilha Excel", type=["xlsx"])
 
-if uploaded_file:
-    df = pd.read_excel(uploaded_file, sheet_name="ORIGINAL")
+if uploaded_file is not None:
+    df = pd.read_excel(uploaded_file)
 
-    # Filtros
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        situacao = st.multiselect("Situação Cadastral", df['Situacao Cadastral'].dropna().unique())
-    with col2:
-        porte = st.multiselect("Porte da Empresa", df['Porte da Empresa'].dropna().unique())
-    with col3:
-        simples = st.multiselect("Optante Simples", df['Optante Simples'].dropna().unique())
+    # Verifica se as colunas necessárias existem
+    required_cols = ['Situacao Cadastral', 'Porte da Empresa', 'Optante Simples']
+    if not all(col in df.columns for col in required_cols):
+        st.error("A planilha está faltando colunas obrigatórias: " + ", ".join([col for col in required_cols if col not in df.columns]))
+    else:
+        # Filtros
+        with st.sidebar:
+            st.header("Filtros")
+            situacao = st.multiselect("Situação Cadastral", df['Situacao Cadastral'].dropna().unique())
+            porte = st.multiselect("Porte da Empresa", df['Porte da Empresa'].dropna().unique())
+            simples = st.multiselect("Optante pelo Simples", df['Optante Simples'].dropna().unique())
 
-    # Aplicar filtros
-    df_filtered = df[
-        (df['Situacao Cadastral'].isin(situacao) if situacao else True) &
-        (df['Porte da Empresa'].isin(porte) if porte else True) &
-        (df['Optante Simples'].isin(simples) if simples else True)
-    ]
+        # Aplicar filtros com segurança
+        df_filtered = df.copy()
+        if situacao:
+            df_filtered = df_filtered[df_filtered['Situacao Cadastral'].isin(situacao)]
+        if porte:
+            df_filtered = df_filtered[df_filtered['Porte da Empresa'].isin(porte)]
+        if simples:
+            df_filtered = df_filtered[df_filtered['Optante Simples'].isin(simples)]
 
-    st.markdown("## 📈 Indicadores")
-    kpi1, kpi2, kpi3 = st.columns(3)
-    kpi1.metric("Total de Empresas", len(df_filtered))
-    kpi2.metric("Ativas", df_filtered[df_filtered['Situacao Cadastral'] == "ATIVA"].shape[0])
-    kpi3.metric("Com Simples", df_filtered[df_filtered['Optante Simples'] == "Sim"].shape[0])
+        st.subheader("📈 KPIs")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total de Empresas", len(df_filtered))
+        col2.metric("Empresas Ativas", df_filtered[df_filtered['Situacao Cadastral'] == 'ATIVA'].shape[0])
+        col3.metric("Optantes do Simples", df_filtered[df_filtered['Optante Simples'] == 'SIM'].shape[0])
 
-    st.markdown("## 📊 Gráficos")
-    graf1, graf2 = st.columns(2)
-    with graf1:
-        fig1 = px.pie(df_filtered, names="Porte da Empresa", title="Distribuição por Porte")
+        st.subheader("📊 Gráficos")
+        fig1 = px.histogram(df_filtered, x='Porte da Empresa', title="Distribuição por Porte")
         st.plotly_chart(fig1, use_container_width=True)
-    with graf2:
-        fig2 = px.histogram(df_filtered, x="Situacao Cadastral", title="Empresas por Situação", color="Situacao Cadastral")
-        st.plotly_chart(fig2, use_container_width=True)
 
-    st.markdown("## 🧾 Tabela Detalhada")
-    st.dataframe(df_filtered)
+        fig2 = px.histogram(df_filtered, x='Situacao Cadastral', title="Distribuição por Situação Cadastral")
+        st.plotly_chart(fig2, use_container_width=True)
+else:
+    st.warning("🔁 Por favor, envie uma planilha Excel para começar.")

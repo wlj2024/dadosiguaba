@@ -64,7 +64,7 @@ if uploaded_file is not None:
 
         # Função de geocodificação com tentativas alternativas
         @st.cache_data
-        def geocode_address(address):
+        def geocode_address(address, municipio="IGUABA GRANDE, RJ"):
             geolocator = Nominatim(user_agent="iguaba_dashboard")
             try:
                 # Primeira tentativa: endereço completo
@@ -72,10 +72,15 @@ if uploaded_file is not None:
                 if location:
                     return (location.latitude, location.longitude, "Sucesso")
                 # Segunda tentativa: sem número
-                simplified_address = ', '.join([part for part in address.split(', ') if not part.isdigit()])
+                simplified_address = ', '.join([part for part in address.split(', ') if not part.isdigit() and part.lower() != municipio.lower()])
                 location = geolocator.geocode(simplified_address, timeout=10)
                 if location:
                     return (location.latitude, location.longitude, "Sucesso sem número")
+                # Terceira tentativa: apenas município e UF
+                fallback_address = municipio
+                location = geolocator.geocode(fallback_address, timeout=10)
+                if location:
+                    return (location.latitude, location.longitude, "Sucesso com fallback (município)")
                 return (None, None, f"Falha: Nenhum resultado para {address}")
             except GeocoderTimedOut:
                 return (None, None, f"Falha: Timeout para {address}")

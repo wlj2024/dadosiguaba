@@ -12,6 +12,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 import plotly.io as pio
 import time
+import folium.plugins  # Adicionado para MarkerCluster
 
 # Configuração da página
 st.set_page_config(page_title="Dashboard Iguaba", layout="wide")
@@ -116,14 +117,15 @@ if uploaded_file is not None:
         df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
 
         if not df_map.empty:
-            # Criando mapa Folium
+            # Criando mapa Folium com MarkerCluster
             m = folium.Map(location=[-22.839, -42.103], zoom_start=13)  # Centrado em Iguaba Grande
+            marker_cluster = folium.plugins.MarkerCluster().add_to(m)
             for idx, row in df_map.iterrows():
                 folium.Marker(
                     [row['Latitude'], row['Longitude']],
                     popup=f"{row['Razao Social']}<br>{row['Address']}",
                     tooltip=row['Razao Social']
-                ).add_to(m)
+                ).add_to(marker_cluster)
             st_folium(m, width=1200, height=600)
             st.success(f"{len(df_map)} endereços geocodificados com sucesso.")
         else:

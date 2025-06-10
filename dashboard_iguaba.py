@@ -124,11 +124,16 @@ if uploaded_file is not None:
         df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
 
         if not df_map.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
-            # Gerar HTML para mapa do Google Maps
+            # Gerar HTML para mapa do Google Maps com depuração
             map_html = f"""
             <div id="map" style="height: 600px; width: 1200px;"></div>
             <script>
                 function initMap() {{
+                    if (!window.google || !window.google.maps) {{
+                        document.getElementById('map').innerHTML = '<p>Erro: A API do Google Maps não carregou. Verifique a chave de API.</p>';
+                        console.error('Google Maps API não carregada');
+                        return;
+                    }}
                     const map = new google.maps.Map(document.getElementById("map"), {{
                         center: {{ lat: -22.839, lng: -42.103 }},
                         zoom: 13,
@@ -136,6 +141,11 @@ if uploaded_file is not None:
                     const markers = [
                         {''.join([f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}' }}" for _, row in df_map.iterrows()])}
                     ];
+                    if (markers.length === 0) {{
+                        document.getElementById('map').innerHTML = '<p>Nenhum marcador disponível.</p>';
+                        console.error('Nenhum marcador encontrado');
+                        return;
+                    }}
                     markers.forEach((marker) => {{
                         new google.maps.Marker({{
                             position: {{ lat: marker.lat, lng: marker.lng }},
@@ -144,6 +154,7 @@ if uploaded_file is not None:
                         }});
                     }});
                 }}
+                window.initMap = initMap;
             </script>
             <script src="https://maps.googleapis.com/maps/api/js?key={st.session_state['google_api_key']}&callback=initMap" async defer></script>
             """

@@ -22,12 +22,13 @@ with st.sidebar:
         api_key = st.text_input("Insira a Chave da API do Google Maps", "")
         if st.button("Salvar Chave"):
             st.session_state['google_api_key'] = api_key
-            st.experimental_rerun()
+            st.rerun()
     else:
-        st.write("Chave da API salva:", st.session_state['google_api_key'][:5] + "..." + st.session_state['google_api_key'][-5:])
+        masked_key = "**********..." + st.session_state['google_api_key'][-4:]
+        st.write("Chave da API salva:", masked_key)
         if st.button("Deletar Chave"):
             del st.session_state['google_api_key']
-            st.experimental_rerun()
+            st.rerun()
 
     st.header("🔍 Filtros")
     situacao = st.multiselect("Situação Cadastral", df['Situacao Cadastral'].dropna().unique() if 'df' in locals() else [])

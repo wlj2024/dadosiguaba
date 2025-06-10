@@ -333,7 +333,7 @@ if uploaded_file is not None:
                             return;
                         }}
                         const map = new google.maps.Map(document.getElementById("map"), {{
-                            center: {{ lat: -22.839, lng: -42.103 }},
+                            center: {{ lat: -22.839907518453305, lng: -42.22680494297199 }},  // Centro de Iguaba Grande
                             zoom: 13,
                         }});
                         const markers = [{markers_str}];

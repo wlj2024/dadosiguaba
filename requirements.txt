@@ -3,7 +3,5 @@ pandas
 openpyxl
 plotly
 geopy
-folium
-streamlit-folium
 reportlab
 kaleido

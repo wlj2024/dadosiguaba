@@ -232,7 +232,7 @@ if uploaded_file is not None:
         # Filtrando empresas com coordenadas válidas para o mapa
         df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
 
-        # Mapa de Empresas
+        # Mapa de Empresas centralizado em Iguaba Grande
         st.subheader("🗺️ Mapa de Empresas")
         if not df_map.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
             markers_str = ', '.join([f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}' }}" for _, row in df_map.iterrows()])
@@ -246,7 +246,7 @@ if uploaded_file is not None:
                         return;
                     }}
                     const map = new google.maps.Map(document.getElementById("map"), {{
-                        center: {{ lat: -22.839, lng: -42.103 }},
+                        center: {{ lat: -22.839, lng: -42.103 }},  // Centro de Iguaba Grande
                         zoom: 13,
                     }});
                     const markers = [{markers_str}];

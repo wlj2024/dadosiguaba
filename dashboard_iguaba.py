@@ -11,7 +11,7 @@ from reportlab.lib.units import inch
 import plotly.io as pio
 import time
 
-# Configuração da página 
+# Configuração da página
 st.set_page_config(page_title="Dashboard Iguaba", layout="wide")
 st.title("📊 Dashboard de Empresas - Iguaba Grande")
 
@@ -22,8 +22,6 @@ if 'show_key_input' not in st.session_state:
     st.session_state['show_key_input'] = False
 if 'show_all_markers' not in st.session_state:
     st.session_state['show_all_markers'] = False
-if 'show_custom_markers' not in st.session_state:
-    st.session_state['show_custom_markers'] = False
 if 'show_map_markers' not in st.session_state:
     st.session_state['show_map_markers'] = False
 
@@ -216,73 +214,6 @@ if uploaded_file is not None:
                 time.sleep(1)
             df_filtered[['Latitude', 'Longitude', 'Geocoding_Status']] = pd.DataFrame(geocoding_results, index=df_filtered.index)
 
-        # Mapa de Empresas
-        st.subheader("🗺️ Mapa de Empresas")
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("Mostrar Marcadores", key="show_all_markers_btn"):
-                st.session_state['show_all_markers'] = True
-        with col2:
-            if st.button("Limpar Marcadores", key="clear_all_markers_btn"):
-                st.session_state['show_all_markers'] = False
-        df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
-        if not df_map.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
-            if st.session_state['show_all_markers']:
-                markers_str = ', '.join([f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, id: '{idx}', content: '<div><strong>{row['Razao Social']}</strong><br>{row['Address']}</div>' }}" for idx, row in df_map.iterrows()])
-                map_html = f"""
-                <div id="map" style="height: 600px; width: 1200px; border: 1px solid #ccc;"></div>
-                <script>
-                    function initMap() {{
-                        if (!window.google || !window.google.maps) {{
-                            document.getElementById('map').innerHTML = '<p style="color:red;">Erro: A API do Google Maps não carregou. Verifique a chave de API ou a conexão.</p>';
-                            console.error('Google Maps API não carregada');
-                            return;
-                        }}
-                        const map = new google.maps.Map(document.getElementById("map"), {{
-                            center: {{ lat: -22.839907518453305, lng: -42.22680494297199 }},
-                            zoom: 13,
-                        }});
-                        const markers = [{markers_str}];
-                        const infoWindows = [];
-                        if (markers.length === 0) {{
-                            document.getElementById('map').innerHTML = '<p>Nenhum marcador disponível.</p>';
-                            console.error('Nenhum marcador encontrado');
-                            return;
-                        }}
-                        markers.forEach((markerData) => {{
-                            const marker = new google.maps.Marker({{
-                                position: {{ lat: markerData.lat, lng: markerData.lng }},
-                                map: map,
-                                id: markerData.id
-                            }});
-                            const infoWindow = new google.maps.InfoWindow({{ content: markerData.content }});
-                            infoWindows.push({{ marker: marker, infoWindow: infoWindow, isOpen: false }});
-                            marker.addListener('click', () => {{
-                                const existing = infoWindows.find(w => w.marker.id === marker.id);
-                                if (existing) {{
-                                    if (existing.isOpen) {{
-                                        existing.infoWindow.close();
-                                        existing.isOpen = false;
-                                    }} else {{
-                                        existing.infoWindow.open(map, marker);
-                                        existing.isOpen = true;
-                                    }}
-                                }}
-                            }});
-                        }});
-                        console.log('Mapa inicializado com', markers.length, 'marcadores');
-                    }}
-                    window.initMap = initMap;
-                </script>
-                <script src="https://maps.googleapis.com/maps/api/js?key={st.session_state['google_api_key']}&callback=initMap" async defer></script>
-                """
-                st.components.v1.html(map_html, height=650, width=1200, scrolling=True)
-                st.success(f"{len(df_map)} endereços geocodificados com sucesso.")
-            else:
-                st.write("Clique em 'Mostrar Marcadores' para exibir os marcadores no mapa.")
-        else:
-            st.warning("Nenhum endereço pôde ser geocodificado ou a chave de API não foi configurada.")
-
         # Seção de controle de tabela e marcadores personalizados
         st.subheader("📄 Tabela de Empresas")
         show_all_markers = st.checkbox("Mostrar todos os marcadores", value=False, key="show_all_markers_checkbox")
@@ -330,6 +261,7 @@ if uploaded_file is not None:
             col_c.download_button("📑 Exportar PDF", pdf_data, "relatorio_iguaba.pdf")
 
         # Checkbox para mostrar empresas no mapa
+        st.subheader("🗺️ Mapa de Empresas")
         show_map_markers = st.checkbox("Mostrar empresas no mapa", value=False, key="show_map_markers_checkbox")
 
         if show_map_markers:
@@ -414,5 +346,3 @@ if uploaded_file is not None:
                 st.dataframe(df_failed[['Razao Social', 'Address', 'Geocoding_Status']], use_container_width=True)
             else:
                 st.info("Todos os endereços foram geocodificados com sucesso ou nenhum endereço está presente nos filtros.")
-
-# Fim do bloco principal

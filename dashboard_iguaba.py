@@ -73,96 +73,6 @@ if uploaded_file is not None:
         col2.metric("Empresas Ativas", empresas_ativas)
         col3.metric("Optantes do Simples", optantes_simples)
 
-        # Função de geocodificação com Google Maps API
-        def geocode_address(address):
-            if 'google_api_key' not in st.session_state or st.session_state['google_api_key'] is None:
-                st.error("Por favor, insira e salve uma chave de API do Google Maps nas configurações.")
-                return (None, None, "Falha: Chave de API não configurada")
-            geolocator = GoogleV3(api_key=st.session_state['google_api_key'])
-            try:
-                # Tentativa com endereço completo
-                location = geolocator.geocode(address, timeout=10)
-                if location:
-                    return (location.latitude, location.longitude, "Sucesso")
-                # Tentativa simplificada (sem número)
-                simplified_address = ', '.join([part for part in address.split(', ') if not part.isdigit()])
-                location = geolocator.geocode(simplified_address, timeout=10)
-                if location:
-                    return (location.latitude, location.longitude, "Sucesso sem número")
-                return (None, None, f"Falha: Nenhum resultado para {address}")
-            except GeocoderTimedOut:
-                return (None, None, f"Falha: Timeout para {address}")
-            except GeocoderUnavailable:
-                return (None, None, f"Falha: Serviço indisponível para {address}")
-            except Exception as e:
-                return (None, None, f"Falha: {str(e)}")
-
-        # Formatando endereço
-        def format_address(row):
-            parts = [
-                str(row['Logradouro']) if pd.notnull(row['Logradouro']) else '',
-                str(row['Numero']) if pd.notnull(row['Numero']) and str(row['Numero']).lower() != 'sn' else '',
-                str(row['Bairro']) if pd.notnull(row['Bairro']) else '',
-                str(row['Municipio']) if pd.notnull(row['Municipio']) else '',
-                str(row['UF']) if pd.notnull(row['UF']) else '',
-                str(row['CEP']) if pd.notnull(row['CEP']) else ''
-            ]
-            return ', '.join([part for part in parts if part])
-
-        # Adicionando geocodificação ao dataframe filtrado
-        st.subheader("🗺️ Mapa de Empresas")
-        with st.spinner("Geocodificando endereços..."):
-            df_filtered['Address'] = df_filtered.apply(format_address, axis=1)
-            geocoding_results = []
-            for address in df_filtered['Address']:
-                result = geocode_address(address)
-                geocoding_results.append(result)
-                time.sleep(1)  # Atraso para respeitar limites da API
-            df_filtered[['Latitude', 'Longitude', 'Geocoding_Status']] = pd.DataFrame(geocoding_results, index=df_filtered.index)
-
-        # Filtrando empresas com coordenadas válidas
-        df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
-
-        if not df_map.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
-            # Gerar HTML para mapa do Google Maps com marcadores corrigidos
-            markers_str = ', '.join([f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}' }}" for _, row in df_map.iterrows()])
-            map_html = f"""
-            <div id="map" style="height: 600px; width: 1200px; border: 1px solid #ccc;"></div>
-            <script>
-                function initMap() {{
-                    if (!window.google || !window.google.maps) {{
-                        document.getElementById('map').innerHTML = '<p style="color:red;">Erro: A API do Google Maps não carregou. Verifique a chave de API ou a conexão.</p>';
-                        console.error('Google Maps API não carregada');
-                        return;
-                    }}
-                    const map = new google.maps.Map(document.getElementById("map"), {{
-                        center: {{ lat: -22.839, lng: -42.103 }},
-                        zoom: 13,
-                    }});
-                    const markers = [{markers_str}];
-                    if (markers.length === 0) {{
-                        document.getElementById('map').innerHTML = '<p>Nenhum marcador disponível.</p>';
-                        console.error('Nenhum marcador encontrado');
-                        return;
-                    }}
-                    markers.forEach((marker) => {{
-                        new google.maps.Marker({{
-                            position: {{ lat: marker.lat, lng: marker.lng }},
-                            map: map,
-                            title: marker.title
-                        }});
-                    }});
-                    console.log('Mapa inicializado com', markers.length, 'marcadores');
-                }}
-                window.initMap = initMap;
-            </script>
-            <script src="https://maps.googleapis.com/maps/api/js?key={st.session_state['google_api_key']}&callback=initMap" async defer></script>
-            """
-            st.components.v1.html(map_html, height=650, width=1200, scrolling=True)
-            st.success(f"{len(df_map)} endereços geocodificados com sucesso.")
-        else:
-            st.warning("Nenhum endereço pôde ser geocodificado ou a chave de API não foi configurada.")
-
         # Gráficos
         st.subheader("📊 Gráficos")
         col4, col5 = st.columns(2)
@@ -233,6 +143,52 @@ if uploaded_file is not None:
             doc.build(elements)
             return buffer.getvalue()
 
+        # Função de geocodificação com Google Maps API
+        def geocode_address(address):
+            if 'google_api_key' not in st.session_state or st.session_state['google_api_key'] is None:
+                st.error("Por favor, insira e salve uma chave de API do Google Maps nas configurações.")
+                return (None, None, "Falha: Chave de API não configurada")
+            geolocator = GoogleV3(api_key=st.session_state['google_api_key'])
+            try:
+                # Tentativa com endereço completo
+                location = geolocator.geocode(address, timeout=10)
+                if location:
+                    return (location.latitude, location.longitude, "Sucesso")
+                # Tentativa simplificada (sem número)
+                simplified_address = ', '.join([part for part in address.split(', ') if not part.isdigit()])
+                location = geolocator.geocode(simplified_address, timeout=10)
+                if location:
+                    return (location.latitude, location.longitude, "Sucesso sem número")
+                return (None, None, f"Falha: Nenhum resultado para {address}")
+            except GeocoderTimedOut:
+                return (None, None, f"Falha: Timeout para {address}")
+            except GeocoderUnavailable:
+                return (None, None, f"Falha: Serviço indisponível para {address}")
+            except Exception as e:
+                return (None, None, f"Falha: {str(e)}")
+
+        # Formatando endereço
+        def format_address(row):
+            parts = [
+                str(row['Logradouro']) if pd.notnull(row['Logradouro']) else '',
+                str(row['Numero']) if pd.notnull(row['Numero']) and str(row['Numero']).lower() != 'sn' else '',
+                str(row['Bairro']) if pd.notnull(row['Bairro']) else '',
+                str(row['Municipio']) if pd.notnull(row['Municipio']) else '',
+                str(row['UF']) if pd.notnull(row['UF']) else '',
+                str(row['CEP']) if pd.notnull(row['CEP']) else ''
+            ]
+            return ', '.join([part for part in parts if part])
+
+        # Adicionando geocodificação ao dataframe filtrado
+        with st.spinner("Geocodificando endereços..."):
+            df_filtered['Address'] = df_filtered.apply(format_address, axis=1)
+            geocoding_results = []
+            for address in df_filtered['Address']:
+                result = geocode_address(address)
+                geocoding_results.append(result)
+                time.sleep(1)  # Atraso para respeitar limites da API
+            df_filtered[['Latitude', 'Longitude', 'Geocoding_Status']] = pd.DataFrame(geocoding_results, index=df_filtered.index)
+
         # Mostrar tabela e botões de exportação
         if show_table:
             st.subheader("📄 Tabela de Empresas")
@@ -272,6 +228,50 @@ if uploaded_file is not None:
                 file_name="relatorio_iguaba.pdf",
                 mime="application/pdf"
             )
+
+        # Filtrando empresas com coordenadas válidas para o mapa
+        df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
+
+        # Mapa de Empresas
+        st.subheader("🗺️ Mapa de Empresas")
+        if not df_map.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
+            markers_str = ', '.join([f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}' }}" for _, row in df_map.iterrows()])
+            map_html = f"""
+            <div id="map" style="height: 600px; width: 1200px; border: 1px solid #ccc;"></div>
+            <script>
+                function initMap() {{
+                    if (!window.google || !window.google.maps) {{
+                        document.getElementById('map').innerHTML = '<p style="color:red;">Erro: A API do Google Maps não carregou. Verifique a chave de API ou a conexão.</p>';
+                        console.error('Google Maps API não carregada');
+                        return;
+                    }}
+                    const map = new google.maps.Map(document.getElementById("map"), {{
+                        center: {{ lat: -22.839, lng: -42.103 }},
+                        zoom: 13,
+                    }});
+                    const markers = [{markers_str}];
+                    if (markers.length === 0) {{
+                        document.getElementById('map').innerHTML = '<p>Nenhum marcador disponível.</p>';
+                        console.error('Nenhum marcador encontrado');
+                        return;
+                    }}
+                    markers.forEach((marker) => {{
+                        new google.maps.Marker({{
+                            position: {{ lat: marker.lat, lng: marker.lng }},
+                            map: map,
+                            title: marker.title
+                        }});
+                    }});
+                    console.log('Mapa inicializado com', markers.length, 'marcadores');
+                }}
+                window.initMap = initMap;
+            </script>
+            <script src="https://maps.googleapis.com/maps/api/js?key={st.session_state['google_api_key']}&callback=initMap" async defer></script>
+            """
+            st.components.v1.html(map_html, height=650, width=1200, scrolling=True)
+            st.success(f"{len(df_map)} endereços geocodificados com sucesso.")
+        else:
+            st.warning("Nenhum endereço pôde ser geocodificado ou a chave de API não foi configurada.")
 
         # Mostrar endereços não geocodificados (se selecionado)
         if show_failed_addresses:

@@ -31,12 +31,12 @@ with st.sidebar:
     if 'google_api_key' in st.session_state and not st.session_state['show_key_input']:
         masked_key = "**********..." + st.session_state['google_api_key'][-4:]
         st.write("Chave da API salva:", masked_key)
-        if st.button("Deletar Chave"):
+        if st.button("Deletar Chave", key="delete_key"):
             del st.session_state['google_api_key']
             st.session_state['show_key_input'] = True
     if st.session_state['show_key_input'] or 'google_api_key' not in st.session_state:
         api_key = st.text_input("Insira a Chave da API do Google Maps", key="api_key_input")
-        if st.button("Salvar Chave"):
+        if st.button("Salvar Chave", key="save_key"):
             st.session_state['google_api_key'] = api_key
             st.session_state['show_key_input'] = False
     st.write("A chave acima é de testes, se desejar usar sua própria chave, clique em Deletar chave, cole sua chave e salve. Para voltar a usar a chave de teste basta atualizar essa página.")
@@ -235,14 +235,12 @@ if uploaded_file is not None:
 
         # Mapa de Empresas
         st.subheader("🗺️ Mapa de Empresas")
-        col1, col2, col3 = st.columns([3, 1, 1])
+        col1, col2 = st.columns([1, 1])
         with col1:
-            st.write("")  # Espaço vazio para alinhamento
-        with col2:
-            if st.button("Mostrar Marcadores"):
+            if st.button("Mostrar Marcadores", key="show_all_markers_btn"):
                 st.session_state['show_all_markers'] = True
-        with col3:
-            if st.button("Limpar Marcadores"):
+        with col2:
+            if st.button("Limpar Marcadores", key="clear_all_markers_btn"):
                 st.session_state['show_all_markers'] = False
         df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
         if not df_map.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
@@ -302,10 +300,10 @@ if uploaded_file is not None:
 
         col5, col6 = st.columns([1, 1])
         with col5:
-            if st.button("Mostrar Marcadores"):
+            if st.button("Mostrar Marcadores", key="show_custom_markers_btn"):
                 st.session_state['show_custom_markers'] = True
         with col6:
-            if st.button("Limpar Marcadores"):
+            if st.button("Limpar Marcadores", key="clear_custom_markers_btn"):
                 st.session_state['show_custom_markers'] = False
 
         if st.session_state['show_custom_markers']:

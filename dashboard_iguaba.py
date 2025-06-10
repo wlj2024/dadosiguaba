@@ -27,20 +27,13 @@ with st.sidebar:
         st.write("Chave da API salva:", masked_key)
         if st.button("Deletar Chave"):
             del st.session_state['google_api_key']
-            st.rerun()
+            st.experimental_rerun()  # Usando experimental_rerun para forçar recarregamento
     else:
         api_key = st.text_input("Insira a Chave da API do Google Maps", "")
         if st.button("Salvar Chave"):
             st.session_state['google_api_key'] = api_key
-            st.rerun()
+            st.experimental_rerun()  # Usando experimental_rerun para forçar recarregamento
     st.write("A chave acima é de testes, se desejar usar sua própria chave, clique em Deletar chave, cole sua chave e salve. Para voltar a usar a chave de teste basta atualizar essa página.")
-
-    st.header("🔍 Filtros")
-    situacao = st.multiselect("Situação Cadastral", df['Situacao Cadastral'].dropna().unique() if 'df' in locals() else [])
-    porte = st.multiselect("Porte da Empresa", df['Porte da Empresa'].dropna().unique() if 'df' in locals() else [])
-    simples = st.multiselect("Optante pelo Simples", df['Optante Simples'].dropna().unique() if 'df' in locals() else [])
-    show_table = st.checkbox("📋 Mostrar tabela completa", value=True)
-    show_failed_addresses = st.checkbox("📍 Mostrar endereços não geocodificados", value=False)
 
 # Upload do arquivo
 uploaded_file = st.file_uploader("📂 Importar planilha Excel", type=["xlsx"])
@@ -54,6 +47,14 @@ if uploaded_file is not None:
         st.error("A planilha está faltando colunas obrigatórias: " + ", ".join([col for col in required_cols if col not in df.columns]))
     else:
         # Aplicar filtros
+        with st.sidebar:
+            st.header("🔍 Filtros")
+            situacao = st.multiselect("Situação Cadastral", df['Situacao Cadastral'].dropna().unique())
+            porte = st.multiselect("Porte da Empresa", df['Porte da Empresa'].dropna().unique())
+            simples = st.multiselect("Optante pelo Simples", df['Optante Simples'].dropna().unique())
+            show_table = st.checkbox("📋 Mostrar tabela completa", value=True)
+            show_failed_addresses = st.checkbox("📍 Mostrar endereços não geocodificados", value=False)
+
         df_filtered = df.copy()
         filtros_aplicados = []
         if situacao:

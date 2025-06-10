@@ -163,15 +163,6 @@ if uploaded_file is not None:
         else:
             st.warning("Nenhum endereço pôde ser geocodificado ou a chave de API não foi configurada.")
 
-        # Mostrar endereços não geocodificados (se selecionado)
-        if show_failed_addresses:
-            st.subheader("📍 Endereços Não Geocodificados")
-            df_failed = df_filtered[df_filtered['Latitude'].isna()]
-            if not df_failed.empty:
-                st.dataframe(df_failed[['Razao Social', 'Address', 'Geocoding_Status']], use_container_width=True)
-            else:
-                st.info("Todos os endereços foram geocodificados com sucesso ou nenhum endereço está presente nos filtros.")
-
         # Gráficos
         st.subheader("📊 Gráficos")
         col4, col5 = st.columns(2)
@@ -281,5 +272,14 @@ if uploaded_file is not None:
                 file_name="relatorio_iguaba.pdf",
                 mime="application/pdf"
             )
+
+        # Mostrar endereços não geocodificados (se selecionado)
+        if show_failed_addresses:
+            st.subheader("📍 Endereços Não Geolocalizados")
+            df_failed = df_filtered[df_filtered['Latitude'].isna()]
+            if not df_failed.empty:
+                st.dataframe(df_failed[['Razao Social', 'Address', 'Geocoding_Status']], use_container_width=True)
+            else:
+                st.info("Todos os endereços foram geocodificados com sucesso ou nenhum endereço está presente nos filtros.")
 
 # Fim do bloco principal

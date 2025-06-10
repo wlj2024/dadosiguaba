@@ -49,6 +49,7 @@ if uploaded_file is not None:
 
     # Verificar colunas obrigatórias
     required_cols = ['Situacao Cadastral', 'Porte da Empresa', 'Optante Simples', 'Logradouro', 'Numero', 'CEP', 'Bairro', 'Municipio', 'UF']
+    geo_cols = ['Address', 'Latitude', 'Longitude', 'Geocoding_Status']
     if not all(col in df.columns for col in required_cols):
         st.error("A planilha está faltando colunas obrigatórias: " + ", ".join([col for col in required_cols if col not in df.columns]))
     else:
@@ -204,19 +205,26 @@ if uploaded_file is not None:
             ]
             return ', '.join([part for part in parts if part])
 
-        # Adicionando geocodificação
-        with st.spinner("Geocodificando endereços..."):
-            df_filtered['Address'] = df_filtered.apply(format_address, axis=1)
-            geocoding_results = []
-            for address in df_filtered['Address']:
-                result = geocode_address(address)
-                geocoding_results.append(result)
-                time.sleep(1)
-            df_filtered[['Latitude', 'Longitude', 'Geocoding_Status']] = pd.DataFrame(geocoding_results, index=df_filtered.index)
+        # Adicionando geocodificação apenas se necessário
+        if all(col in df.columns for col in geo_cols):
+            st.write("Usando dados de geocodificação existentes da planilha.")
+            df_filtered['Address'] = df['Address']
+            df_filtered['Latitude'] = df['Latitude']
+            df_filtered['Longitude'] = df['Longitude']
+            df_filtered['Geocoding_Status'] = df['Geocoding_Status']
+        else:
+            with st.spinner("Geocodificando endereços..."):
+                df_filtered['Address'] = df_filtered.apply(format_address, axis=1)
+                geocoding_results = []
+                for address in df_filtered['Address']:
+                    result = geocode_address(address)
+                    geocoding_results.append(result)
+                    time.sleep(1)
+                df_filtered[['Latitude', 'Longitude', 'Geocoding_Status']] = pd.DataFrame(geocoding_results, index=df_filtered.index)
 
         # Seção de controle de tabela e marcadores personalizados
         st.subheader("📄 Tabela de Empresas")
-        show_all_markers = st.checkbox("Mostrar todos os marcadores", value=False, key="show_all_markers_checkbox")
+        show_all_markers = st.checkbox("Mostrar todas", value=False, key="show_all_markers_checkbox")
 
         st.subheader("Marcadores Personalizados")
         column = st.selectbox("Coluna", df_filtered.columns, disabled=show_all_markers)

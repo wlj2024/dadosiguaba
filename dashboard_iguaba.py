@@ -78,11 +78,37 @@ if uploaded_file is not None:
         col4, col5 = st.columns(2)
         
         with col4:
-            fig1 = px.histogram(df_filtered, x='Porte da Empresa', title="Distribuição por Porte")
+            # Seleção de tipo de gráfico para Distribuição por Porte
+            chart_type_porte = st.selectbox(
+                "Tipo de gráfico para Porte",
+                ["barras", "pizza", "linha", "área"],
+                index=0
+            )
+            if chart_type_porte == "barras":
+                fig1 = px.histogram(df_filtered, x='Porte da Empresa', title="Distribuição por Porte")
+            elif chart_type_porte == "pizza":
+                fig1 = px.pie(df_filtered, names='Porte da Empresa', title="Distribuição por Porte")
+            elif chart_type_porte == "linha":
+                fig1 = px.line(df_filtered, x='Porte da Empresa', title="Distribuição por Porte")
+            elif chart_type_porte == "área":
+                fig1 = px.area(df_filtered, x='Porte da Empresa', title="Distribuição por Porte")
             st.plotly_chart(fig1, use_container_width=True)
 
         with col5:
-            fig2 = px.histogram(df_filtered, x='Situacao Cadastral', title="Distribuição por Situação Cadastral")
+            # Seleção de tipo de gráfico para Distribuição por Situação Cadastral
+            chart_type_situacao = st.selectbox(
+                "Tipo de gráfico para Situação Cadastral",
+                ["barras", "pizza", "linha", "área"],
+                index=0
+            )
+            if chart_type_situacao == "barras":
+                fig2 = px.histogram(df_filtered, x='Situacao Cadastral', title="Distribuição por Situação Cadastral")
+            elif chart_type_situacao == "pizza":
+                fig2 = px.pie(df_filtered, names='Situacao Cadastral', title="Distribuição por Situação Cadastral")
+            elif chart_type_situacao == "linha":
+                fig2 = px.line(df_filtered, x='Situacao Cadastral', title="Distribuição por Situação Cadastral")
+            elif chart_type_situacao == "área":
+                fig2 = px.area(df_filtered, x='Situacao Cadastral', title="Distribuição por Situação Cadastral")
             st.plotly_chart(fig2, use_container_width=True)
 
         # Função para converter gráfico Plotly em PNG

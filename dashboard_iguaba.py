@@ -20,6 +20,10 @@ if 'google_api_key' not in st.session_state:
     st.session_state['google_api_key'] = "AIzaSyAxkuSyZfTZc9cD2UjUJFV0rXqLkf1yFzQ"
 if 'show_key_input' not in st.session_state:
     st.session_state['show_key_input'] = False
+if 'show_all_markers' not in st.session_state:
+    st.session_state['show_all_markers'] = False
+if 'show_custom_markers' not in st.session_state:
+    st.session_state['show_custom_markers'] = False
 
 # Campo para chave de API na barra lateral
 with st.sidebar:
@@ -231,43 +235,55 @@ if uploaded_file is not None:
 
         # Mapa de Empresas
         st.subheader("🗺️ Mapa de Empresas")
+        col1, col2, col3 = st.columns([3, 1, 1])
+        with col1:
+            st.write("")  # Espaço vazio para alinhamento
+        with col2:
+            if st.button("Mostrar Marcadores"):
+                st.session_state['show_all_markers'] = True
+        with col3:
+            if st.button("Limpar Marcadores"):
+                st.session_state['show_all_markers'] = False
         df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
         if not df_map.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
-            markers_str = ', '.join([f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}' }}" for _, row in df_map.iterrows()])
-            map_html = f"""
-            <div id="map" style="height: 600px; width: 1200px; border: 1px solid #ccc;"></div>
-            <script>
-                function initMap() {{
-                    if (!window.google || !window.google.maps) {{
-                        document.getElementById('map').innerHTML = '<p style="color:red;">Erro: A API do Google Maps não carregou. Verifique a chave de API ou a conexão.</p>';
-                        console.error('Google Maps API não carregada');
-                        return;
-                    }}
-                    const map = new google.maps.Map(document.getElementById("map"), {{
-                        center: {{ lat: -22.839, lng: -42.103 }},  // Centro de Iguaba Grande
-                        zoom: 13,
-                    }});
-                    const markers = [{markers_str}];
-                    if (markers.length === 0) {{
-                        document.getElementById('map').innerHTML = '<p>Nenhum marcador disponível.</p>';
-                        console.error('Nenhum marcador encontrado');
-                        return;
-                    }}
-                    markers.forEach((marker) => {{
-                        new google.maps.Marker({{
-                            position: {{ lat: marker.lat, lng: marker.lng }},
-                            map: map,
-                            title: marker.title
+            if st.session_state['show_all_markers']:
+                markers_str = ', '.join([f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}' }}" for _, row in df_map.iterrows()])
+                map_html = f"""
+                <div id="map" style="height: 600px; width: 1200px; border: 1px solid #ccc;"></div>
+                <script>
+                    function initMap() {{
+                        if (!window.google || !window.google.maps) {{
+                            document.getElementById('map').innerHTML = '<p style="color:red;">Erro: A API do Google Maps não carregou. Verifique a chave de API ou a conexão.</p>';
+                            console.error('Google Maps API não carregada');
+                            return;
+                        }}
+                        const map = new google.maps.Map(document.getElementById("map"), {{
+                            center: {{ lat: -22.839, lng: -42.103 }},  // Centro de Iguaba Grande
+                            zoom: 13,
                         }});
-                    }});
-                    console.log('Mapa inicializado com', markers.length, 'marcadores');
-                }}
-                window.initMap = initMap;
-            </script>
-            <script src="https://maps.googleapis.com/maps/api/js?key={st.session_state['google_api_key']}&callback=initMap" async defer></script>
-            """
-            st.components.v1.html(map_html, height=650, width=1200, scrolling=True)
-            st.success(f"{len(df_map)} endereços geocodificados com sucesso.")
+                        const markers = [{markers_str}];
+                        if (markers.length === 0) {{
+                            document.getElementById('map').innerHTML = '<p>Nenhum marcador disponível.</p>';
+                            console.error('Nenhum marcador encontrado');
+                            return;
+                        }}
+                        markers.forEach((marker) => {{
+                            new google.maps.Marker({{
+                                position: {{ lat: marker.lat, lng: marker.lng }},
+                                map: map,
+                                title: marker.title
+                            }});
+                        }});
+                        console.log('Mapa inicializado com', markers.length, 'marcadores');
+                    }}
+                    window.initMap = initMap;
+                </script>
+                <script src="https://maps.googleapis.com/maps/api/js?key={st.session_state['google_api_key']}&callback=initMap" async defer></script>
+                """
+                st.components.v1.html(map_html, height=650, width=1200, scrolling=True)
+                st.success(f"{len(df_map)} endereços geocodificados com sucesso.")
+            else:
+                st.write("Clique em 'Mostrar Marcadores' para exibir os marcadores no mapa.")
         else:
             st.warning("Nenhum endereço pôde ser geocodificado ou a chave de API não foi configurada.")
 
@@ -283,6 +299,69 @@ if uploaded_file is not None:
             amarelo = st.selectbox("Amarelo", [None] + df_filtered[column].dropna().unique().tolist())
         with col4:
             verde = st.selectbox("Verde", [None] + df_filtered[column].dropna().unique().tolist())
+
+        col5, col6 = st.columns([1, 1])
+        with col5:
+            if st.button("Mostrar Marcadores"):
+                st.session_state['show_custom_markers'] = True
+        with col6:
+            if st.button("Limpar Marcadores"):
+                st.session_state['show_custom_markers'] = False
+
+        if st.session_state['show_custom_markers']:
+            df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
+            if not df_map.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
+                markers = []
+                for idx, row in df_map.iterrows():
+                    value = row[column]
+                    if value == vermelho:
+                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}', icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' }}")
+                    elif value == azul:
+                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}', icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' }}")
+                    elif value == amarelo:
+                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}', icon: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png' }}")
+                    elif value == verde:
+                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}', icon: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }}")
+                    else:
+                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}' }}")
+                markers_str = ', '.join(markers)
+                map_html = f"""
+                <div id="map" style="height: 600px; width: 1200px; border: 1px solid #ccc;"></div>
+                <script>
+                    function initMap() {{
+                        if (!window.google || !window.google.maps) {{
+                            document.getElementById('map').innerHTML = '<p style="color:red;">Erro: A API do Google Maps não carregou. Verifique a chave de API ou a conexão.</p>';
+                            console.error('Google Maps API não carregada');
+                            return;
+                        }}
+                        const map = new google.maps.Map(document.getElementById("map"), {{
+                            center: {{ lat: -22.839, lng: -42.103 }},
+                            zoom: 13,
+                        }});
+                        const markers = [{markers_str}];
+                        if (markers.length === 0) {{
+                            document.getElementById('map').innerHTML = '<p>Nenhum marcador disponível.</p>';
+                            console.error('Nenhum marcador encontrado');
+                            return;
+                        }}
+                        markers.forEach((marker) => {{
+                            new google.maps.Marker({{
+                                position: {{ lat: marker.lat, lng: marker.lng }},
+                                map: map,
+                                title: marker.title,
+                                icon: marker.icon || null
+                            }});
+                        }});
+                        console.log('Mapa inicializado com', markers.length, 'marcadores');
+                    }}
+                    window.initMap = initMap;
+                </script>
+                <script src="https://maps.googleapis.com/maps/api/js?key={st.session_state['google_api_key']}&callback=initMap" async defer></script>
+                """
+                st.components.v1.html(map_html, height=650, width=1200, scrolling=True)
+                st.success(f"{len(df_map)} endereços geocodificados com marcadores personalizados.")
+            else:
+                st.warning("Nenhum endereço pôde ser geocodificado ou a chave de API não foi configurada.")
 
         # Mostrar endereços não geocodificados
         if show_failed_addresses:

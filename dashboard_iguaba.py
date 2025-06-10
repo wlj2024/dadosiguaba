@@ -19,7 +19,7 @@ st.title("📊 Dashboard de Empresas - Iguaba Grande")
 with st.sidebar:
     st.header("⚙️ Configurações da API")
     if 'google_api_key' not in st.session_state or st.session_state['google_api_key'] is None:
-        api_key = st.text_input("Insira a Chave da API do Google Maps", "")
+        api_key = st.text_input("Insira a Chave da API do Google Maps. Certifique-se de que a chave de API do Google Maps está ativa e tem habilitadas as APIs Google Maps JavaScript API e Geocoding API no Google Cloud Console. Para testar use essa chave: AIzaSyAxkuSyZfTZc9cD2UjUJFV0rXqLkf1yFzQ", "")
         if st.button("Salvar Chave"):
             st.session_state['google_api_key'] = api_key
             st.rerun()

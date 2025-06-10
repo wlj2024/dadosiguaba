@@ -11,7 +11,7 @@ from reportlab.lib.units import inch
 import plotly.io as pio
 import time
 
-# Configuração da página
+# Configuração da página 
 st.set_page_config(page_title="Dashboard Iguaba", layout="wide")
 st.title("📊 Dashboard de Empresas - Iguaba Grande")
 

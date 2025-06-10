@@ -245,7 +245,7 @@ if uploaded_file is not None:
         df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
         if not df_map.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
             if st.session_state['show_all_markers']:
-                markers_str = ', '.join([f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}' }}" for _, row in df_map.iterrows()])
+                markers_str = ', '.join([f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, id: '{idx}', content: '<div><strong>{row['Razao Social']}</strong><br>{row['Address']}</div>' }}" for idx, row in df_map.iterrows()])
                 map_html = f"""
                 <div id="map" style="height: 600px; width: 1200px; border: 1px solid #ccc;"></div>
                 <script>
@@ -260,16 +260,31 @@ if uploaded_file is not None:
                             zoom: 13,
                         }});
                         const markers = [{markers_str}];
+                        const infoWindows = [];
                         if (markers.length === 0) {{
                             document.getElementById('map').innerHTML = '<p>Nenhum marcador disponível.</p>';
                             console.error('Nenhum marcador encontrado');
                             return;
                         }}
-                        markers.forEach((marker) => {{
-                            new google.maps.Marker({{
-                                position: {{ lat: marker.lat, lng: marker.lng }},
+                        markers.forEach((markerData) => {{
+                            const marker = new google.maps.Marker({{
+                                position: {{ lat: markerData.lat, lng: markerData.lng }},
                                 map: map,
-                                title: marker.title
+                                id: markerData.id
+                            }});
+                            const infoWindow = new google.maps.InfoWindow({{ content: markerData.content }});
+                            infoWindows.push({{ marker: marker, infoWindow: infoWindow, isOpen: false }});
+                            marker.addListener('click', () => {{
+                                const existing = infoWindows.find(w => w.marker.id === marker.id);
+                                if (existing) {{
+                                    if (existing.isOpen) {{
+                                        existing.infoWindow.close();
+                                        existing.isOpen = false;
+                                    }} else {{
+                                        existing.infoWindow.open(map, marker);
+                                        existing.isOpen = true;
+                                    }}
+                                }}
                             }});
                         }});
                         console.log('Mapa inicializado com', markers.length, 'marcadores');
@@ -312,16 +327,16 @@ if uploaded_file is not None:
                 markers = []
                 for idx, row in df_map.iterrows():
                     value = row[column]
+                    icon = null
                     if value == vermelho:
-                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}', icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' }}")
+                        icon = "'http://maps.google.com/mapfiles/ms/icons/red-dot.png'"
                     elif value == azul:
-                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}', icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' }}")
+                        icon = "'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'"
                     elif value == amarelo:
-                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}', icon: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png' }}")
+                        icon = "'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png'"
                     elif value == verde:
-                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}', icon: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }}")
-                    else:
-                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}' }}")
+                        icon = "'http://maps.google.com/mapfiles/ms/icons/green-dot.png'"
+                    markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, id: '{idx}', content: '<div><strong>{row['Razao Social']}</strong><br>{row['Address']}</div>', icon: {icon} }}")
                 markers_str = ', '.join(markers)
                 map_html = f"""
                 <div id="map" style="height: 600px; width: 1200px; border: 1px solid #ccc;"></div>
@@ -337,17 +352,32 @@ if uploaded_file is not None:
                             zoom: 13,
                         }});
                         const markers = [{markers_str}];
+                        const infoWindows = [];
                         if (markers.length === 0) {{
                             document.getElementById('map').innerHTML = '<p>Nenhum marcador disponível.</p>';
                             console.error('Nenhum marcador encontrado');
                             return;
                         }}
-                        markers.forEach((marker) => {{
-                            new google.maps.Marker({{
-                                position: {{ lat: marker.lat, lng: marker.lng }},
+                        markers.forEach((markerData) => {{
+                            const marker = new google.maps.Marker({{
+                                position: {{ lat: markerData.lat, lng: markerData.lng }},
                                 map: map,
-                                title: marker.title,
-                                icon: marker.icon || null
+                                id: markerData.id,
+                                icon: markerData.icon || null
+                            }});
+                            const infoWindow = new google.maps.InfoWindow({{ content: markerData.content }});
+                            infoWindows.push({{ marker: marker, infoWindow: infoWindow, isOpen: false }});
+                            marker.addListener('click', () => {{
+                                const existing = infoWindows.find(w => w.marker.id === marker.id);
+                                if (existing) {{
+                                    if (existing.isOpen) {{
+                                        existing.infoWindow.close();
+                                        existing.isOpen = false;
+                                    }} else {{
+                                        existing.infoWindow.open(map, marker);
+                                        existing.isOpen = true;
+                                    }}
+                                }}
                             }});
                         }});
                         console.log('Mapa inicializado com', markers.length, 'marcadores');

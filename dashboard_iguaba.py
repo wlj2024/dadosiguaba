@@ -2,22 +2,39 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from io import BytesIO
-from geopy.geocoders import Nominatim
+from geopy.geocoders import GoogleV3
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
-import folium
-from streamlit_folium import st_folium
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 import plotly.io as pio
 import time
-import folium.plugins
-import random  # Para variação opcional nas coordenadas
 
 # Configuração da página
 st.set_page_config(page_title="Dashboard Iguaba", layout="wide")
 st.title("📊 Dashboard de Empresas - Iguaba Grande")
+
+# Campo para chave de API na barra lateral
+with st.sidebar:
+    st.header("⚙️ Configurações da API")
+    if 'google_api_key' not in st.session_state or st.session_state['google_api_key'] is None:
+        api_key = st.text_input("Insira a Chave da API do Google Maps", "")
+        if st.button("Salvar Chave"):
+            st.session_state['google_api_key'] = api_key
+            st.experimental_rerun()
+    else:
+        st.write("Chave da API salva:", st.session_state['google_api_key'][:5] + "..." + st.session_state['google_api_key'][-5:])
+        if st.button("Deletar Chave"):
+            del st.session_state['google_api_key']
+            st.experimental_rerun()
+
+    st.header("🔍 Filtros")
+    situacao = st.multiselect("Situação Cadastral", df['Situacao Cadastral'].dropna().unique() if 'df' in locals() else [])
+    porte = st.multiselect("Porte da Empresa", df['Porte da Empresa'].dropna().unique() if 'df' in locals() else [])
+    simples = st.multiselect("Optante pelo Simples", df['Optante Simples'].dropna().unique() if 'df' in locals() else [])
+    show_table = st.checkbox("📋 Mostrar tabela completa", value=True)
+    show_failed_addresses = st.checkbox("📍 Mostrar endereços não geocodificados", value=False)
 
 # Upload do arquivo
 uploaded_file = st.file_uploader("📂 Importar planilha Excel", type=["xlsx"])
@@ -30,15 +47,6 @@ if uploaded_file is not None:
     if not all(col in df.columns for col in required_cols):
         st.error("A planilha está faltando colunas obrigatórias: " + ", ".join([col for col in required_cols if col not in df.columns]))
     else:
-        # Filtros na barra lateral
-        with st.sidebar:
-            st.header("🔍 Filtros")
-            situacao = st.multiselect("Situação Cadastral", df['Situacao Cadastral'].dropna().unique())
-            porte = st.multiselect("Porte da Empresa", df['Porte da Empresa'].dropna().unique())
-            simples = st.multiselect("Optante pelo Simples", df['Optante Simples'].dropna().unique())
-            show_table = st.checkbox("📋 Mostrar tabela completa", value=True)
-            show_failed_addresses = st.checkbox("📍 Mostrar endereços não geocodificados", value=False)
-
         # Aplicar filtros
         df_filtered = df.copy()
         filtros_aplicados = []
@@ -64,30 +72,22 @@ if uploaded_file is not None:
         col2.metric("Empresas Ativas", empresas_ativas)
         col3.metric("Optantes do Simples", optantes_simples)
 
-        # Função de geocodificação com múltiplas tentativas
-        @st.cache_data
-        def geocode_address(address, municipio="IGUABA GRANDE, RJ"):
-            geolocator = Nominatim(user_agent="iguaba_dashboard")
+        # Função de geocodificação com Google Maps API
+        def geocode_address(address):
+            if 'google_api_key' not in st.session_state or st.session_state['google_api_key'] is None:
+                st.error("Por favor, insira e salve uma chave de API do Google Maps nas configurações.")
+                return (None, None, "Falha: Chave de API não configurada")
+            geolocator = GoogleV3(api_key=st.session_state['google_api_key'])
             try:
-                # Tentativa 1: Endereço completo
+                # Tentativa com endereço completo
                 location = geolocator.geocode(address, timeout=10)
                 if location:
                     return (location.latitude, location.longitude, "Sucesso")
-                # Tentativa 2: Rua + Município + UF
-                rua_municipio = ', '.join([part for part in address.split(', ') if part.lower() not in ['sn', municipio.lower()] and not part.isdigit()][:2] + [municipio])
-                location = geolocator.geocode(rua_municipio, timeout=10)
+                # Tentativa simplificada (sem número)
+                simplified_address = ', '.join([part for part in address.split(', ') if not part.isdigit()])
+                location = geolocator.geocode(simplified_address, timeout=10)
                 if location:
-                    return (location.latitude, location.longitude, "Sucesso com rua e município")
-                # Tentativa 3: Rua + CEP
-                rua_cep = ', '.join([part for part in address.split(', ') if part.replace('-', '').isdigit() or not part.isdigit()][:2])
-                location = geolocator.geocode(rua_cep, timeout=10)
-                if location:
-                    return (location.latitude, location.longitude, "Sucesso com rua e CEP")
-                # Tentativa 4: Apenas Município (fallback)
-                fallback_address = municipio
-                location = geolocator.geocode(fallback_address, timeout=10)
-                if location:
-                    return (location.latitude, location.longitude, "Sucesso com fallback (município)")
+                    return (location.latitude, location.longitude, "Sucesso sem número")
                 return (None, None, f"Falha: Nenhum resultado para {address}")
             except GeocoderTimedOut:
                 return (None, None, f"Falha: Timeout para {address}")
@@ -115,33 +115,41 @@ if uploaded_file is not None:
             geocoding_results = []
             for address in df_filtered['Address']:
                 result = geocode_address(address)
-                # Adicionar pequena variação se usar fallback
-                if result[2] == "Sucesso com fallback (município)":
-                    lat = result[0] + random.uniform(-0.005, 0.005)  # Variação de ~500m
-                    lon = result[1] + random.uniform(-0.005, 0.005)
-                    geocoding_results.append((lat, lon, result[2]))
-                else:
-                    geocoding_results.append(result)
-                time.sleep(1)  # Atraso para respeitar limites do Nominatim
+                geocoding_results.append(result)
+                time.sleep(1)  # Atraso para respeitar limites da API
             df_filtered[['Latitude', 'Longitude', 'Geocoding_Status']] = pd.DataFrame(geocoding_results, index=df_filtered.index)
 
         # Filtrando empresas com coordenadas válidas
         df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
 
-        if not df_map.empty:
-            # Criando mapa Folium com MarkerCluster
-            m = folium.Map(location=[-22.839, -42.103], zoom_start=13)  # Centrado em Iguaba Grande
-            marker_cluster = folium.plugins.MarkerCluster().add_to(m)
-            for idx, row in df_map.iterrows():
-                folium.Marker(
-                    [row['Latitude'], row['Longitude']],
-                    popup=f"{row['Razao Social']}<br>{row['Address']}",
-                    tooltip=row['Razao Social']
-                ).add_to(marker_cluster)
-            st_folium(m, width=1200, height=600)
+        if not df_map.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
+            # Gerar HTML para mapa do Google Maps
+            map_html = f"""
+            <div id="map" style="height: 600px; width: 1200px;"></div>
+            <script>
+                function initMap() {{
+                    const map = new google.maps.Map(document.getElementById("map"), {{
+                        center: {{ lat: -22.839, lng: -42.103 }},
+                        zoom: 13,
+                    }});
+                    const markers = [
+                        {''.join([f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}' }}" for _, row in df_map.iterrows()])}
+                    ];
+                    markers.forEach((marker) => {{
+                        new google.maps.Marker({{
+                            position: {{ lat: marker.lat, lng: marker.lng }},
+                            map: map,
+                            title: marker.title
+                        }});
+                    }});
+                }}
+            </script>
+            <script src="https://maps.googleapis.com/maps/api/js?key={st.session_state['google_api_key']}&callback=initMap" async defer></script>
+            """
+            st.components.v1.html(map_html, height=600, width=1200)
             st.success(f"{len(df_map)} endereços geocodificados com sucesso.")
         else:
-            st.warning("Nenhum endereço pôde ser geocodificado com os filtros aplicados.")
+            st.warning("Nenhum endereço pôde ser geocodificado ou a chave de API não foi configurada.")
 
         # Mostrar endereços não geocodificados (se selecionado)
         if show_failed_addresses:

@@ -12,7 +12,8 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 import plotly.io as pio
 import time
-import folium.plugins  # Adicionado para MarkerCluster
+import folium.plugins
+import random  # Para variação opcional nas coordenadas
 
 # Configuração da página
 st.set_page_config(page_title="Dashboard Iguaba", layout="wide")
@@ -63,21 +64,26 @@ if uploaded_file is not None:
         col2.metric("Empresas Ativas", empresas_ativas)
         col3.metric("Optantes do Simples", optantes_simples)
 
-        # Função de geocodificação com tentativas alternativas
+        # Função de geocodificação com múltiplas tentativas
         @st.cache_data
         def geocode_address(address, municipio="IGUABA GRANDE, RJ"):
             geolocator = Nominatim(user_agent="iguaba_dashboard")
             try:
-                # Primeira tentativa: endereço completo
+                # Tentativa 1: Endereço completo
                 location = geolocator.geocode(address, timeout=10)
                 if location:
                     return (location.latitude, location.longitude, "Sucesso")
-                # Segunda tentativa: sem número
-                simplified_address = ', '.join([part for part in address.split(', ') if not part.isdigit() and part.lower() != municipio.lower()])
-                location = geolocator.geocode(simplified_address, timeout=10)
+                # Tentativa 2: Rua + Município + UF
+                rua_municipio = ', '.join([part for part in address.split(', ') if part.lower() not in ['sn', municipio.lower()] and not part.isdigit()][:2] + [municipio])
+                location = geolocator.geocode(rua_municipio, timeout=10)
                 if location:
-                    return (location.latitude, location.longitude, "Sucesso sem número")
-                # Terceira tentativa: apenas município e UF
+                    return (location.latitude, location.longitude, "Sucesso com rua e município")
+                # Tentativa 3: Rua + CEP
+                rua_cep = ', '.join([part for part in address.split(', ') if part.replace('-', '').isdigit() or not part.isdigit()][:2])
+                location = geolocator.geocode(rua_cep, timeout=10)
+                if location:
+                    return (location.latitude, location.longitude, "Sucesso com rua e CEP")
+                # Tentativa 4: Apenas Município (fallback)
                 fallback_address = municipio
                 location = geolocator.geocode(fallback_address, timeout=10)
                 if location:
@@ -109,7 +115,13 @@ if uploaded_file is not None:
             geocoding_results = []
             for address in df_filtered['Address']:
                 result = geocode_address(address)
-                geocoding_results.append(result)
+                # Adicionar pequena variação se usar fallback
+                if result[2] == "Sucesso com fallback (município)":
+                    lat = result[0] + random.uniform(-0.005, 0.005)  # Variação de ~500m
+                    lon = result[1] + random.uniform(-0.005, 0.005)
+                    geocoding_results.append((lat, lon, result[2]))
+                else:
+                    geocoding_results.append(result)
                 time.sleep(1)  # Atraso para respeitar limites do Nominatim
             df_filtered[['Latitude', 'Longitude', 'Geocoding_Status']] = pd.DataFrame(geocoding_results, index=df_filtered.index)
 

@@ -15,20 +15,25 @@ import time
 st.set_page_config(page_title="Dashboard Iguaba", layout="wide")
 st.title("📊 Dashboard de Empresas - Iguaba Grande")
 
+# Inicializar chave de teste ao carregar a página
+if 'google_api_key' not in st.session_state or st.session_state['google_api_key'] is None:
+    st.session_state['google_api_key'] = "AIzaSyAxkuSyZfTZc9cD2UjUJFV0rXqLkf1yFzQ"
+
 # Campo para chave de API na barra lateral
 with st.sidebar:
     st.header("⚙️ Configurações da API")
-    if 'google_api_key' not in st.session_state or st.session_state['google_api_key'] is None:
-        api_key = st.text_input("Insira a Chave da API do Google Maps. Certifique-se de que a chave de API do Google Maps está ativa e tem habilitadas as APIs Google Maps JavaScript API e Geocoding API no Google Cloud Console. Para testar use essa chave: AIzaSyAxkuSyZfTZc9cD2UjUJFV0rXqLkf1yFzQ", "")
-        if st.button("Salvar Chave"):
-            st.session_state['google_api_key'] = api_key
-            st.rerun()
-    else:
+    if 'google_api_key' in st.session_state:
         masked_key = "**********..." + st.session_state['google_api_key'][-4:]
         st.write("Chave da API salva:", masked_key)
         if st.button("Deletar Chave"):
             del st.session_state['google_api_key']
             st.rerun()
+    else:
+        api_key = st.text_input("Insira a Chave da API do Google Maps", "")
+        if st.button("Salvar Chave"):
+            st.session_state['google_api_key'] = api_key
+            st.rerun()
+    st.write("A chave acima é de testes, se desejar usar sua própria chave, clique em Deletar chave, cole sua chave e salve. Para voltar a usar a chave de teste basta atualizar essa página.")
 
     st.header("🔍 Filtros")
     situacao = st.multiselect("Situação Cadastral", df['Situacao Cadastral'].dropna().unique() if 'df' in locals() else [])
@@ -82,7 +87,7 @@ if uploaded_file is not None:
             chart_type_porte = st.selectbox(
                 "Tipo de gráfico para Porte",
                 ["barras", "pizza", "linha", "área"],
-                index=1  # Define "pizza" como padrão (índice 1)
+                index=1  # Define "pizza" como padrão
             )
             if chart_type_porte == "barras":
                 fig1 = px.histogram(df_filtered, x='Porte da Empresa', title="Distribuição por Porte")
@@ -99,7 +104,7 @@ if uploaded_file is not None:
             chart_type_situacao = st.selectbox(
                 "Tipo de gráfico para Situação Cadastral",
                 ["barras", "pizza", "linha", "área"],
-                index=0  # Define "barras" como padrão (índice 0)
+                index=0  # Define "barras" como padrão
             )
             if chart_type_situacao == "barras":
                 fig2 = px.histogram(df_filtered, x='Situacao Cadastral', title="Distribuição por Situação Cadastral")

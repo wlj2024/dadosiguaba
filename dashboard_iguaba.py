@@ -82,7 +82,7 @@ if uploaded_file is not None:
             chart_type_porte = st.selectbox(
                 "Tipo de gráfico para Porte",
                 ["barras", "pizza", "linha", "área"],
-                index=0
+                index=1  # Define "pizza" como padrão (índice 1)
             )
             if chart_type_porte == "barras":
                 fig1 = px.histogram(df_filtered, x='Porte da Empresa', title="Distribuição por Porte")
@@ -99,7 +99,7 @@ if uploaded_file is not None:
             chart_type_situacao = st.selectbox(
                 "Tipo de gráfico para Situação Cadastral",
                 ["barras", "pizza", "linha", "área"],
-                index=0
+                index=0  # Define "barras" como padrão (índice 0)
             )
             if chart_type_situacao == "barras":
                 fig2 = px.histogram(df_filtered, x='Situacao Cadastral', title="Distribuição por Situação Cadastral")

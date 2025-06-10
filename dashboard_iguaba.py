@@ -86,11 +86,10 @@ if uploaded_file is not None:
         col4, col5 = st.columns(2)
         
         with col4:
-            # Seleção de tipo de gráfico para Distribuição por Porte
             chart_type_porte = st.selectbox(
                 "Tipo de gráfico para Porte",
                 ["barras", "pizza", "linha", "área"],
-                index=1  # Define "pizza" como padrão
+                index=1
             )
             if chart_type_porte == "barras":
                 fig1 = px.histogram(df_filtered, x='Porte da Empresa', title="Distribuição por Porte")
@@ -103,11 +102,10 @@ if uploaded_file is not None:
             st.plotly_chart(fig1, use_container_width=True)
 
         with col5:
-            # Seleção de tipo de gráfico para Distribuição por Situação Cadastral
             chart_type_situacao = st.selectbox(
                 "Tipo de gráfico para Situação Cadastral",
                 ["barras", "pizza", "linha", "área"],
-                index=0  # Define "barras" como padrão
+                index=0
             )
             if chart_type_situacao == "barras":
                 fig2 = px.histogram(df_filtered, x='Situacao Cadastral', title="Distribuição por Situação Cadastral")
@@ -131,11 +129,9 @@ if uploaded_file is not None:
             styles = getSampleStyleSheet()
             elements = []
 
-            # Título
             elements.append(Paragraph("Relatório de Empresas - Iguaba Grande", styles['Title']))
             elements.append(Spacer(1, 12))
 
-            # KPIs
             elements.append(Paragraph("KPIs", styles['Heading2']))
             kpi_data = [
                 ["Métrica", "Valor"],
@@ -157,38 +153,30 @@ if uploaded_file is not None:
             elements.append(kpi_table)
             elements.append(Spacer(1, 12))
 
-            # Filtros
             elements.append(Paragraph("Filtros Aplicados", styles['Heading2']))
             elements.append(Paragraph(filtros_txt.replace("\n", "<br/>"), styles['Normal']))
             elements.append(Spacer(1, 12))
 
-            # Gráficos
             elements.append(Paragraph("Gráficos", styles['Heading2']))
-            
-            # Gráfico 1
             fig1_img = fig_to_png(fig1)
             elements.append(Image(fig1_img, width=5*inch, height=3*inch))
             elements.append(Spacer(1, 12))
-
-            # Gráfico 2
             fig2_img = fig_to_png(fig2)
             elements.append(Image(fig2_img, width=5*inch, height=3*inch))
 
             doc.build(elements)
             return buffer.getvalue()
 
-        # Função de geocodificação com Google Maps API
+        # Função de geocodificação
         def geocode_address(address):
             if 'google_api_key' not in st.session_state or st.session_state['google_api_key'] is None:
                 st.error("Por favor, insira e salve uma chave de API do Google Maps nas configurações.")
                 return (None, None, "Falha: Chave de API não configurada")
             geolocator = GoogleV3(api_key=st.session_state['google_api_key'])
             try:
-                # Tentativa com endereço completo
                 location = geolocator.geocode(address, timeout=10)
                 if location:
                     return (location.latitude, location.longitude, "Sucesso")
-                # Tentativa simplificada (sem número)
                 simplified_address = ', '.join([part for part in address.split(', ') if not part.isdigit()])
                 location = geolocator.geocode(simplified_address, timeout=10)
                 if location:
@@ -213,14 +201,14 @@ if uploaded_file is not None:
             ]
             return ', '.join([part for part in parts if part])
 
-        # Adicionando geocodificação ao dataframe filtrado
+        # Adicionando geocodificação
         with st.spinner("Geocodificando endereços..."):
             df_filtered['Address'] = df_filtered.apply(format_address, axis=1)
             geocoding_results = []
             for address in df_filtered['Address']:
                 result = geocode_address(address)
                 geocoding_results.append(result)
-                time.sleep(1)  # Atraso para respeitar limites da API
+                time.sleep(1)
             df_filtered[['Latitude', 'Longitude', 'Geocoding_Status']] = pd.DataFrame(geocoding_results, index=df_filtered.index)
 
         # Mostrar tabela e botões de exportação
@@ -229,45 +217,21 @@ if uploaded_file is not None:
             st.dataframe(df_filtered, use_container_width=True)
 
             col_a, col_b, col_c = st.columns([1, 1, 1])
-
-            # Exportar Excel
             with BytesIO() as buffer:
                 with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                     df_filtered.to_excel(writer, index=False, sheet_name="Empresas")
                     filtros_df = pd.DataFrame({"Filtros Aplicados": [filtros_txt]})
                     filtros_df.to_excel(writer, index=False, sheet_name="Filtros")
                 excel_data = buffer.getvalue()
-
-            col_a.download_button(
-                label="📥 Exportar Excel",
-                data=excel_data,
-                file_name="dados_filtrados_iguaba.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-
-            # Exportar CSV
+            col_a.download_button("📥 Exportar Excel", excel_data, "dados_filtrados_iguaba.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             csv_data = df_filtered.to_csv(index=False)
-            col_b.download_button(
-                label="📄 Exportar CSV",
-                data=csv_data,
-                file_name="dados_filtrados_iguaba.csv",
-                mime="text/csv"
-            )
-
-            # Exportar PDF
+            col_b.download_button("📄 Exportar CSV", csv_data, "dados_filtrados_iguaba.csv", "text/csv")
             pdf_data = create_pdf()
-            col_c.download_button(
-                label="📑 Exportar PDF",
-                data=pdf_data,
-                file_name="relatorio_iguaba.pdf",
-                mime="application/pdf"
-            )
+            col_c.download_button("📑 Exportar PDF", pdf_data, "relatorio_iguaba.pdf", "application/pdf")
 
-        # Filtrando empresas com coordenadas válidas para o mapa
-        df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
-
-        # Mapa de Empresas centralizado em Iguaba Grande
+        # Mapa de Empresas
         st.subheader("🗺️ Mapa de Empresas")
+        df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
         if not df_map.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
             markers_str = ', '.join([f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}' }}" for _, row in df_map.iterrows()])
             map_html = f"""
@@ -280,7 +244,7 @@ if uploaded_file is not None:
                         return;
                     }}
                     const map = new google.maps.Map(document.getElementById("map"), {{
-                        center: {{ lat: -22.839907518453305, lng: -42.22680494297199 }},  // Centro de Iguaba Grande
+                        center: {{ lat: -22.839, lng: -42.103 }},  // Centro de Iguaba Grande
                         zoom: 13,
                     }});
                     const markers = [{markers_str}];
@@ -307,7 +271,20 @@ if uploaded_file is not None:
         else:
             st.warning("Nenhum endereço pôde ser geocodificado ou a chave de API não foi configurada.")
 
-        # Mostrar endereços não geocodificados (se selecionado)
+        # Marcadores Personalizados
+        st.subheader("Marcadores Personalizados")
+        column = st.selectbox("Coluna", df_filtered.columns)
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            vermelho = st.selectbox("Vermelho", [None] + df_filtered[column].dropna().unique().tolist())
+        with col2:
+            azul = st.selectbox("Azul", [None] + df_filtered[column].dropna().unique().tolist())
+        with col3:
+            amarelo = st.selectbox("Amarelo", [None] + df_filtered[column].dropna().unique().tolist())
+        with col4:
+            verde = st.selectbox("Verde", [None] + df_filtered[column].dropna().unique().tolist())
+
+        # Mostrar endereços não geocodificados
         if show_failed_addresses:
             st.subheader("📍 Endereços Não Geolocalizados")
             df_failed = df_filtered[df_filtered['Latitude'].isna()]

@@ -15,35 +15,32 @@ import time
 st.set_page_config(page_title="Dashboard Iguaba", layout="wide")
 st.title("📊 Dashboard de Empresas - Iguaba Grande")
 
-# Inicializar chave de teste ao carregar a página
+# Inicializar estados
 if 'google_api_key' not in st.session_state:
     st.session_state['google_api_key'] = "AIzaSyAxkuSyZfTZc9cD2UjUJFV0rXqLkf1yFzQ"
+if 'show_key_input' not in st.session_state:
+    st.session_state['show_key_input'] = False
 
 # Campo para chave de API na barra lateral
 with st.sidebar:
     st.header("⚙️ Configurações da API")
-    if 'google_api_key' in st.session_state:
+    if 'google_api_key' in st.session_state and not st.session_state['show_key_input']:
         masked_key = "**********..." + st.session_state['google_api_key'][-4:]
         st.write("Chave da API salva:", masked_key)
         if st.button("Deletar Chave"):
             del st.session_state['google_api_key']
-            # Limpar o estado do upload e forçar recarregamento
-            if 'uploaded_file' in st.session_state:
-                del st.session_state['uploaded_file']
-            st.rerun()
-    else:
-        api_key = st.text_input("Insira a Chave da API do Google Maps", "")
+            st.session_state['show_key_input'] = True
+    if st.session_state['show_key_input'] or 'google_api_key' not in st.session_state:
+        api_key = st.text_input("Insira a Chave da API do Google Maps", key="api_key_input")
         if st.button("Salvar Chave"):
             st.session_state['google_api_key'] = api_key
-            st.rerun()
+            st.session_state['show_key_input'] = False
     st.write("A chave acima é de testes, se desejar usar sua própria chave, clique em Deletar chave, cole sua chave e salve. Para voltar a usar a chave de teste basta atualizar essa página.")
 
 # Upload do arquivo
 uploaded_file = st.file_uploader("📂 Importar planilha Excel", type=["xlsx"], key="file_uploader")
 
 if uploaded_file is not None:
-    # Armazenar o arquivo no session_state para persistência
-    st.session_state['uploaded_file'] = uploaded_file
     df = pd.read_excel(uploaded_file)
 
     # Verificar colunas obrigatórias
@@ -283,7 +280,7 @@ if uploaded_file is not None:
                         return;
                     }}
                     const map = new google.maps.Map(document.getElementById("map"), {{
-                        center: {{ lat: -22.839, lng: -42.103 }},  // Centro de Iguaba Grande
+                        center: {{ lat: -22.839907518453305, lng: -42.22680494297199 }},  // Centro de Iguaba Grande
                         zoom: 13,
                     }});
                     const markers = [{markers_str}];

@@ -24,6 +24,8 @@ if 'show_all_markers' not in st.session_state:
     st.session_state['show_all_markers'] = False
 if 'show_custom_markers' not in st.session_state:
     st.session_state['show_custom_markers'] = False
+if 'show_map_markers' not in st.session_state:
+    st.session_state['show_map_markers'] = False
 
 # Campo para chave de API na barra lateral
 with st.sidebar:
@@ -58,7 +60,6 @@ if uploaded_file is not None:
             situacao = st.multiselect("Situação Cadastral", df['Situacao Cadastral'].dropna().unique())
             porte = st.multiselect("Porte da Empresa", df['Porte da Empresa'].dropna().unique())
             simples = st.multiselect("Optante pelo Simples", df['Optante Simples'].dropna().unique())
-            show_table = st.checkbox("📋 Mostrar tabela completa", value=True)
             show_failed_addresses = st.checkbox("📍 Mostrar endereços não geocodificados", value=False)
 
         df_filtered = df.copy()
@@ -215,24 +216,6 @@ if uploaded_file is not None:
                 time.sleep(1)
             df_filtered[['Latitude', 'Longitude', 'Geocoding_Status']] = pd.DataFrame(geocoding_results, index=df_filtered.index)
 
-        # Mostrar tabela e botões de exportação
-        if show_table:
-            st.subheader("📄 Tabela de Empresas")
-            st.dataframe(df_filtered, use_container_width=True)
-
-            col_a, col_b, col_c = st.columns([1, 1, 1])
-            with BytesIO() as buffer:
-                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                    df_filtered.to_excel(writer, index=False, sheet_name="Empresas")
-                    filtros_df = pd.DataFrame({"Filtros Aplicados": [filtros_txt]})
-                    filtros_df.to_excel(writer, index=False, sheet_name="Filtros")
-                excel_data = buffer.getvalue()
-            col_a.download_button("📥 Exportar Excel", excel_data, "dados_filtrados_iguaba.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            csv_data = df_filtered.to_csv(index=False)
-            col_b.download_button("📄 Exportar CSV", csv_data, "dados_filtrados_iguaba.csv", "text/csv")
-            pdf_data = create_pdf()
-            col_c.download_button("📑 Exportar PDF", pdf_data, "relatorio_iguaba.pdf", "application/pdf")
-
         # Mapa de Empresas
         st.subheader("🗺️ Mapa de Empresas")
         col1, col2 = st.columns([1, 1])
@@ -300,62 +283,75 @@ if uploaded_file is not None:
         else:
             st.warning("Nenhum endereço pôde ser geocodificado ou a chave de API não foi configurada.")
 
-        # Marcadores Personalizados
+        # Seção de controle de tabela e marcadores personalizados
+        st.subheader("📄 Tabela de Empresas")
+        show_all_markers = st.checkbox("Mostrar todos os marcadores", value=False, key="show_all_markers_checkbox")
+
         st.subheader("Marcadores Personalizados")
-        column = st.selectbox("Coluna", df_filtered.columns)
+        column = st.selectbox("Coluna", df_filtered.columns, disabled=show_all_markers)
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            vermelho = st.selectbox("Vermelho", [None] + df_filtered[column].dropna().unique().tolist())
+            vermelho = st.selectbox("Vermelho", [None] + df_filtered[column].dropna().unique().tolist(), disabled=show_all_markers)
         with col2:
-            azul = st.selectbox("Azul", [None] + df_filtered[column].dropna().unique().tolist())
+            azul = st.selectbox("Azul", [None] + df_filtered[column].dropna().unique().tolist(), disabled=show_all_markers)
         with col3:
-            amarelo = st.selectbox("Amarelo", [None] + df_filtered[column].dropna().unique().tolist())
+            amarelo = st.selectbox("Amarelo", [None] + df_filtered[column].dropna().unique().tolist(), disabled=show_all_markers)
         with col4:
-            verde = st.selectbox("Verde", [None] + df_filtered[column].dropna().unique().tolist())
+            verde = st.selectbox("Verde", [None] + df_filtered[column].dropna().unique().tolist(), disabled=show_all_markers)
 
-        # Criar nova tabela filtrada com base nos campos de cores
-        df_custom_filtered = df_filtered.copy()
-        if vermelho or azul or amarelo or verde:
-            mask = pd.Series(False, index=df_custom_filtered.index)
+        # Criar tabela filtrada com base nos campos de cores
+        df_display = df_filtered.copy()
+        if not show_all_markers and (vermelho or azul or amarelo or verde):
+            mask = pd.Series(False, index=df_display.index)
             if vermelho:
-                mask |= (df_custom_filtered[column] == vermelho)
+                mask |= (df_display[column] == vermelho)
             if azul:
-                mask |= (df_custom_filtered[column] == azul)
+                mask |= (df_display[column] == azul)
             if amarelo:
-                mask |= (df_custom_filtered[column] == amarelo)
+                mask |= (df_display[column] == amarelo)
             if verde:
-                mask |= (df_custom_filtered[column] == verde)
-            df_custom_filtered = df_custom_filtered[mask].dropna(subset=['Latitude', 'Longitude'])
+                mask |= (df_display[column] == verde)
+            df_display = df_display[mask].dropna(subset=['Latitude', 'Longitude'])
 
-        # Exibir a tabela filtrada (opcional)
-        if st.checkbox("Mostrar tabela de marcadores personalizados", key="show_custom_table"):
-            st.subheader("📄 Tabela de Marcadores Personalizados")
-            st.dataframe(df_custom_filtered, use_container_width=True)
+        # Exibir tabela de empresas
+        if show_all_markers or (not show_all_markers and (vermelho or azul or amarelo or verde)):
+            st.dataframe(df_display, use_container_width=True)
+            col_a, col_b, col_c = st.columns([1, 1, 1])
+            with BytesIO() as buffer:
+                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                    df_display.to_excel(writer, index=False, sheet_name="Empresas")
+                    filtros_df = pd.DataFrame({"Filtros Aplicados": [filtros_txt]})
+                    filtros_df.to_excel(writer, index=False, sheet_name="Filtros")
+                excel_data = buffer.getvalue()
+            col_a.download_button("📥 Exportar Excel", excel_data, "dados_filtrados_iguaba.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            csv_data = df_display.to_csv(index=False)
+            col_b.download_button("📄 Exportar CSV", csv_data, "dados_filtrados_iguaba.csv", "text/csv")
+            pdf_data = create_pdf()
+            col_c.download_button("📑 Exportar PDF", pdf_data, "relatorio_iguaba.pdf")
 
-        col5, col6 = st.columns([1, 1])
-        with col5:
-            if st.button("Mostrar Marcadores", key="show_custom_markers_btn"):
-                st.session_state['show_custom_markers'] = True
-        with col6:
-            if st.button("Limpar Marcadores", key="clear_custom_markers_btn"):
-                st.session_state['show_custom_markers'] = False
+        # Checkbox para mostrar empresas no mapa
+        show_map_markers = st.checkbox("Mostrar empresas no mapa", value=False, key="show_map_markers_checkbox")
 
-        if st.session_state['show_custom_markers']:
-            if not df_custom_filtered.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
+        if show_map_markers:
+            df_map = df_display.dropna(subset=['Latitude', 'Longitude'])
+            if not df_map.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
                 markers = []
-                for idx, row in df_custom_filtered.iterrows():
-                    value = row[column]
-                    if value == vermelho:
-                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, id: '{idx}', content: '<div><strong>{row['Razao Social']}</strong><br>{row['Address']}</div>', icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' }}")
-                    elif value == azul:
-                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, id: '{idx}', content: '<div><strong>{row['Razao Social']}</strong><br>{row['Address']}</div>', icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' }}")
-                    elif value == amarelo:
-                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, id: '{idx}', content: '<div><strong>{row['Razao Social']}</strong><br>{row['Address']}</div>', icon: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png' }}")
-                    elif value == verde:
-                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, id: '{idx}', content: '<div><strong>{row['Razao Social']}</strong><br>{row['Address']}</div>', icon: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }}")
+                for idx, row in df_map.iterrows():
+                    value = row[column] if not show_all_markers else None
+                    if not show_all_markers and value:
+                        if value == vermelho:
+                            markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, id: '{idx}', content: '<div><strong>{row['Razao Social']}</strong><br>{row['Address']}</div>', icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' }}")
+                        elif value == azul:
+                            markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, id: '{idx}', content: '<div><strong>{row['Razao Social']}</strong><br>{row['Address']}</div>', icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' }}")
+                        elif value == amarelo:
+                            markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, id: '{idx}', content: '<div><strong>{row['Razao Social']}</strong><br>{row['Address']}</div>', icon: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png' }}")
+                        elif value == verde:
+                            markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, id: '{idx}', content: '<div><strong>{row['Razao Social']}</strong><br>{row['Address']}</div>', icon: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }}")
+                    else:
+                        markers.append(f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, id: '{idx}', content: '<div><strong>{row['Razao Social']}</strong><br>{row['Address']}</div>' }}")
                 markers_str = ', '.join(markers)
                 if not markers:
-                    st.warning("Nenhum marcador corresponde aos filtros selecionados.")
+                    st.warning("Nenhum marcador disponível para exibir.")
                 else:
                     map_html = f"""
                     <div id="map" style="height: 600px; width: 1200px; border: 1px solid #ccc;"></div>
@@ -406,7 +402,7 @@ if uploaded_file is not None:
                     <script src="https://maps.googleapis.com/maps/api/js?key={st.session_state['google_api_key']}&callback=initMap" async defer></script>
                     """
                     st.components.v1.html(map_html, height=650, width=1200, scrolling=True)
-                    st.success(f"{len(markers)} endereços geocodificados com marcadores personalizados.")
+                    st.success(f"{len(markers)} endereços geocodificados exibidos no mapa.")
             else:
                 st.warning("Nenhum endereço pôde ser geocodificado ou a chave de API não foi configurada.")
 

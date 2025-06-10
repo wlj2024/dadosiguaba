@@ -124,13 +124,13 @@ if uploaded_file is not None:
         df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
 
         if not df_map.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
-            # Gerar HTML para mapa do Google Maps com depuração
+            # Gerar HTML para mapa do Google Maps com depuração aprimorada
             map_html = f"""
-            <div id="map" style="height: 600px; width: 1200px;"></div>
+            <div id="map" style="height: 600px; width: 1200px; border: 1px solid #ccc;"></div>
             <script>
                 function initMap() {{
                     if (!window.google || !window.google.maps) {{
-                        document.getElementById('map').innerHTML = '<p>Erro: A API do Google Maps não carregou. Verifique a chave de API.</p>';
+                        document.getElementById('map').innerHTML = '<p style="color:red;">Erro: A API do Google Maps não carregou. Verifique a chave de API ou a conexão.</p>';
                         console.error('Google Maps API não carregada');
                         return;
                     }}
@@ -153,12 +153,13 @@ if uploaded_file is not None:
                             title: marker.title
                         }});
                     }});
+                    console.log('Mapa inicializado com', markers.length, 'marcadores');
                 }}
                 window.initMap = initMap;
             </script>
             <script src="https://maps.googleapis.com/maps/api/js?key={st.session_state['google_api_key']}&callback=initMap" async defer></script>
             """
-            st.components.v1.html(map_html, height=600, width=1200)
+            st.components.v1.html(map_html, height=650, width=1200, scrolling=True)
             st.success(f"{len(df_map)} endereços geocodificados com sucesso.")
         else:
             st.warning("Nenhum endereço pôde ser geocodificado ou a chave de API não foi configurada.")
@@ -281,5 +282,5 @@ if uploaded_file is not None:
                 file_name="relatorio_iguaba.pdf",
                 mime="application/pdf"
             )
-else:
-    st.warning("🔁 Por favor, envie uma planilha Excel para começar.")
+
+# Fim do bloco principal

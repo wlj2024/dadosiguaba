@@ -27,12 +27,12 @@ with st.sidebar:
         st.write("Chave da API salva:", masked_key)
         if st.button("Deletar Chave"):
             del st.session_state['google_api_key']
-            st.experimental_rerun()  # Usando experimental_rerun para forçar recarregamento
+            st.rerun()  # Substituído experimental_rerun por rerun
     else:
         api_key = st.text_input("Insira a Chave da API do Google Maps", "")
         if st.button("Salvar Chave"):
             st.session_state['google_api_key'] = api_key
-            st.experimental_rerun()  # Usando experimental_rerun para forçar recarregamento
+            st.rerun()  # Substituído experimental_rerun por rerun
     st.write("A chave acima é de testes, se desejar usar sua própria chave, clique em Deletar chave, cole sua chave e salve. Para voltar a usar a chave de teste basta atualizar essa página.")
 
 # Upload do arquivo

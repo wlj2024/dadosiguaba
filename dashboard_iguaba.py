@@ -124,7 +124,8 @@ if uploaded_file is not None:
         df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
 
         if not df_map.empty and 'google_api_key' in st.session_state and st.session_state['google_api_key']:
-            # Gerar HTML para mapa do Google Maps com depuração aprimorada
+            # Gerar HTML para mapa do Google Maps com marcadores corrigidos
+            markers_str = ', '.join([f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}' }}" for _, row in df_map.iterrows()])
             map_html = f"""
             <div id="map" style="height: 600px; width: 1200px; border: 1px solid #ccc;"></div>
             <script>
@@ -138,9 +139,7 @@ if uploaded_file is not None:
                         center: {{ lat: -22.839, lng: -42.103 }},
                         zoom: 13,
                     }});
-                    const markers = [
-                        {''.join([f"{{ lat: {row['Latitude']}, lng: {row['Longitude']}, title: '{row['Razao Social']}<br>{row['Address']}' }}" for _, row in df_map.iterrows()])}
-                    ];
+                    const markers = [{markers_str}];
                     if (markers.length === 0) {{
                         document.getElementById('map').innerHTML = '<p>Nenhum marcador disponível.</p>';
                         console.error('Nenhum marcador encontrado');
